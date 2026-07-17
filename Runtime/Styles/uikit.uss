@@ -1,0 +1,172 @@
+/* Neoxider UI Kit — built-in animation presets.
+   Only opacity/translate/scale are animated; all state rules use specificity >= 2 classes
+   so they beat the importer's own 2-class geometry rules. */
+
+/* ===== Pages ===== */
+
+.uikit-page {
+    transition-property: opacity, translate, scale;
+    transition-duration: 0.25s;
+    transition-timing-function: ease-out-cubic;
+}
+
+.uikit-page.is-hiding {
+    transition-duration: 0.2s;
+}
+
+.uikit-page.uikit-anim-fade {
+    opacity: 0;
+}
+
+.uikit-page.uikit-anim-fade.is-open {
+    opacity: 1;
+}
+
+.uikit-page.uikit-anim-slide-up {
+    opacity: 0;
+    translate: 0 80px;
+}
+
+.uikit-page.uikit-anim-slide-up.is-open {
+    opacity: 1;
+    translate: 0 0;
+}
+
+.uikit-page.uikit-anim-slide-down {
+    opacity: 0;
+    translate: 0 -80px;
+}
+
+.uikit-page.uikit-anim-slide-down.is-open {
+    opacity: 1;
+    translate: 0 0;
+}
+
+.uikit-page.uikit-anim-slide-left {
+    opacity: 0;
+    translate: 80px 0;
+}
+
+.uikit-page.uikit-anim-slide-left.is-open {
+    opacity: 1;
+    translate: 0 0;
+}
+
+.uikit-page.uikit-anim-slide-right {
+    opacity: 0;
+    translate: -80px 0;
+}
+
+.uikit-page.uikit-anim-slide-right.is-open {
+    opacity: 1;
+    translate: 0 0;
+}
+
+.uikit-page.uikit-anim-scale {
+    opacity: 0;
+    scale: 0.92;
+}
+
+.uikit-page.uikit-anim-scale.is-open {
+    opacity: 1;
+    scale: 1;
+}
+
+/* ===== Top bar intro (container path configured per page) ===== */
+
+.uikit-page .uikit-topbar {
+    opacity: 0;
+    translate: 0 -40px;
+    transition-property: opacity, translate;
+    transition-duration: 0.3s;
+    transition-delay: 0.08s;
+    transition-timing-function: ease-out-cubic;
+}
+
+.uikit-page.is-open .uikit-topbar {
+    opacity: 1;
+    translate: 0 0;
+}
+
+/* ===== Popups ===== */
+
+/* Imported popups are visible by default and their fullscreen background eats input;
+   the kit adds .uikit-popup during bind, before the first frame. */
+.fui_type_popup.uikit-popup {
+    visibility: hidden;
+    opacity: 0;
+    transition-property: opacity, translate, scale, visibility;
+    transition-duration: 0.25s;
+    transition-timing-function: ease-out-cubic;
+}
+
+.fui_type_popup.uikit-popup.is-open {
+    visibility: visible;
+    opacity: 1;
+    translate: 0 0;
+    scale: 1;
+}
+
+.uikit-popup.uikit-anim-scale-pop {
+    scale: 0.85;
+}
+
+.uikit-popup.uikit-anim-slide-up {
+    translate: 0 60px;
+}
+
+/* Dim overlay (the popup's fullscreen "background" child). */
+.uikit-popup .uikit-dim {
+    opacity: 0;
+    transition-property: opacity;
+    transition-duration: 0.25s;
+}
+
+.uikit-popup.is-open .uikit-dim {
+    opacity: 1;
+}
+
+/* Popup header intro. */
+.uikit-popup #panel_header {
+    opacity: 0;
+    translate: 0 -24px;
+    transition-property: opacity, translate;
+    transition-duration: 0.3s;
+    transition-delay: 0.08s;
+    transition-timing-function: ease-out-cubic;
+}
+
+.uikit-popup.is-open #panel_header {
+    opacity: 1;
+    translate: 0 0;
+}
+
+/* ===== Buttons ===== */
+
+.fui_type_button {
+    scale: 1;
+    transition-property: scale, opacity;
+    transition-duration: 0.1s;
+    transition-timing-function: ease-out;
+}
+
+.fui_type_button.uikit-pressed {
+    scale: 0.92;
+}
+
+.fui_type_button.uikit-disabled {
+    opacity: 0.5;
+}
+
+/* ===== Counter pulse ===== */
+
+.uikit-counter {
+    scale: 1;
+    transition-property: scale;
+    transition-duration: 0.15s;
+    transition-timing-function: ease-out;
+}
+
+.uikit-counter.uikit-counter-pulse {
+    scale: 1.12;
+}

@@ -1,0 +1,18 @@
+{
+    "name": "Neo.UIKit.Editor",
+    "rootNamespace": "Neo.UIKit.Editor",
+    "references": [
+        "Neo.UIKit"
+    ],
+    "includePlatforms": [
+        "Editor"
+    ],
+    "excludePlatforms": [],
+    "allowUnsafeCode": false,
+    "overrideReferences": false,
+    "precompiledReferences": [],
+    "autoReferenced": true,
+    "defineConstraints": [],
+    "versionDefines": [],
+    "noEngineReferences": false
+}

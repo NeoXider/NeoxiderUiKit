@@ -1,0 +1,25 @@
+{
+  "name": "com.neoxider.uikit",
+  "version": "0.1.0",
+  "displayName": "Neoxider UI Kit",
+  "description": "Universal UI Toolkit kit over MTK Figma UI Import output: page router, generated typed views, widgets, animations, pluggable game adapters.",
+  "unity": "6000.5",
+  "author": {
+    "name": "Neoxider"
+  },
+  "license": "MIT",
+  "documentationUrl": "https://github.com/NeoXider/NeoxiderUiKit#readme",
+  "keywords": [
+    "ui-toolkit",
+    "uxml",
+    "figma",
+    "pages",
+    "popups",
+    "code-generation",
+    "neoxider"
+  ],
+  "dependencies": {
+    "com.unity.modules.uielements": "1.0.0",
+    "com.unity.modules.audio": "1.0.0"
+  }
+}
