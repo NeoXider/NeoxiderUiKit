@@ -70,7 +70,10 @@ namespace Neo.UIKit.Editor
             root.Add(Header());
             root.Add(Tabs());
 
-            var scroll = new ScrollView { style = { flexGrow = 1 } };
+            var scroll = new ScrollView(ScrollViewMode.Vertical) { style = { flexGrow = 1 } };
+            scroll.horizontalScrollerVisibility = ScrollerVisibility.Hidden;
+            scroll.contentContainer.style.flexShrink = 1;
+            scroll.contentContainer.style.maxWidth = Length.Percent(100);
             root.Add(scroll);
 
             _generationBody = new VisualElement();
@@ -381,17 +384,25 @@ namespace Neo.UIKit.Editor
 
         private VisualElement ElementRow(UiElementModel element)
         {
-            var row = new VisualElement { style = { flexDirection = FlexDirection.Row, alignItems = Align.Center, marginLeft = 12 } };
+            var row = new VisualElement
+            {
+                style = { flexDirection = FlexDirection.Row, alignItems = Align.Center, marginLeft = 12, overflow = Overflow.Hidden }
+            };
             row.Add(IncludeToggle(element.FullPath, "элемент"));
 
             row.Add(new Label(element.Name)
             {
                 tooltip = element.FullPath,
-                style = { minWidth = 150, flexGrow = 1, color = new Color(0.85f, 0.86f, 0.88f), overflow = Overflow.Hidden }
+                style =
+                {
+                    minWidth = 40, flexGrow = 1, flexShrink = 1, color = new Color(0.85f, 0.86f, 0.88f),
+                    overflow = Overflow.Hidden, textOverflow = TextOverflow.Ellipsis,
+                    unityTextOverflowPosition = TextOverflowPosition.End
+                }
             });
 
             UiWidgetKind effective = EffectiveKind(element);
-            var kindField = new EnumField(effective) { style = { width = 100 } };
+            var kindField = new EnumField(effective) { style = { width = 92, flexShrink = 0 } };
             kindField.RegisterValueChangedCallback(evt =>
             {
                 SetKindOverride(element, (UiWidgetKind)evt.newValue);
@@ -401,7 +412,7 @@ namespace Neo.UIKit.Editor
 
             if (IsCounterKind(effective))
             {
-                var idField = new TextField { value = EffectiveCounterId(element), isDelayed = true, style = { width = 80 } };
+                var idField = new TextField { value = EffectiveCounterId(element), isDelayed = true, style = { width = 70, flexShrink = 0 } };
                 idField.RegisterValueChangedCallback(evt => SetCounterIdOverride(element, evt.newValue));
                 row.Add(idField);
             }
@@ -489,18 +500,24 @@ namespace Neo.UIKit.Editor
                 string popupPreset = entry?.popupPreset ?? "scale-pop";
                 UiAnimationMode mode = entry?.animationMode ?? UiAnimationMode.ForwardAndBackward;
 
-                var row = new VisualElement { style = { flexDirection = FlexDirection.Row, alignItems = Align.Center, marginBottom = 2 } };
-                row.Add(new Label(page.PageId) { style = { width = 84, color = new Color(0.85f, 0.86f, 0.88f) } });
+                var row = new VisualElement
+                {
+                    style = { flexDirection = FlexDirection.Row, alignItems = Align.Center, marginBottom = 2, overflow = Overflow.Hidden }
+                };
+                row.Add(new Label(page.PageId)
+                {
+                    style = { width = 70, flexShrink = 0, color = new Color(0.85f, 0.86f, 0.88f), overflow = Overflow.Hidden }
+                });
 
-                var showField = new PopupField<string>(presetList, Mathf.Max(presetList.IndexOf(showPreset), 0)) { style = { flexGrow = 1, marginRight = 3 } };
+                var showField = new PopupField<string>(presetList, Mathf.Max(presetList.IndexOf(showPreset), 0)) { style = { flexGrow = 1, flexShrink = 1, minWidth = 40, marginRight = 3 } };
                 showField.RegisterValueChangedCallback(evt => { GetOrCreatePageEntry(page.PageId).showPreset = evt.newValue; MarkConfig(); });
                 row.Add(showField);
 
-                var popupField = new PopupField<string>(presetList, Mathf.Max(presetList.IndexOf(popupPreset), 0)) { style = { flexGrow = 1, marginRight = 3 } };
+                var popupField = new PopupField<string>(presetList, Mathf.Max(presetList.IndexOf(popupPreset), 0)) { style = { flexGrow = 1, flexShrink = 1, minWidth = 40, marginRight = 3 } };
                 popupField.RegisterValueChangedCallback(evt => { GetOrCreatePageEntry(page.PageId).popupPreset = evt.newValue; MarkConfig(); });
                 row.Add(popupField);
 
-                var modeField = new EnumField(mode) { style = { width = 130 } };
+                var modeField = new EnumField(mode) { style = { flexGrow = 1, flexShrink = 1, minWidth = 40 } };
                 modeField.RegisterValueChangedCallback(evt => { GetOrCreatePageEntry(page.PageId).animationMode = (UiAnimationMode)evt.newValue; MarkConfig(); });
                 row.Add(modeField);
 
@@ -571,8 +588,16 @@ namespace Neo.UIKit.Editor
                     foreach (UiPopupModel popup in page.Popups)
                     {
                         string path = popup.FullPath;
-                        var row = new VisualElement { style = { flexDirection = FlexDirection.Row, alignItems = Align.Center, marginBottom = 2 } };
-                        row.Add(new Label(path) { style = { flexGrow = 1, color = new Color(0.85f, 0.86f, 0.88f), fontSize = 11 } });
+                        var row = new VisualElement { style = { flexDirection = FlexDirection.Row, alignItems = Align.Center, marginBottom = 2, overflow = Overflow.Hidden } };
+                        row.Add(new Label(path)
+                        {
+                            tooltip = path,
+                            style =
+                            {
+                                flexGrow = 1, flexShrink = 1, minWidth = 40, color = new Color(0.85f, 0.86f, 0.88f),
+                                fontSize = 11, overflow = Overflow.Hidden, textOverflow = TextOverflow.Ellipsis
+                            }
+                        });
                         row.Add(ColorButton("Открыть", "Открыть попап.", Green, () => UiKit.Popups.Open(path)));
                         popupsCard.Add(row);
                     }
