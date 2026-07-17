@@ -1,0 +1,26 @@
+/* Project overrides for MY_GAME_DESIGN (attached after uikit.uss via UiKitConfig).
+   The full-screen backdrop is the always-on UI_Background layer (UiBackground.uxml,
+   sorting order -1000); pages stay transparent so the game world shows through. */
+
+/* ===== Audio toggle knobs (settings + pause popups share the layout) =====
+   Track textures are swapped in code (AudioToggleWiring); the knob slides here. */
+
+.uikit-audio-knob {
+    transition-property: translate;
+    transition-duration: 0.15s;
+    transition-timing-function: ease-out-cubic;
+}
+
+/* Sound knob sits on the right (on) by design; slide left when off. */
+.uikit-audio-knob-right.is-off {
+    translate: -131px 0;
+}
+
+/* Music knob sits on the left (off) by design; slide right when on. */
+.uikit-audio-knob-left {
+    translate: 131px 0;
+}
+
+.uikit-audio-knob-left.is-off {
+    translate: 0 0;
+}
