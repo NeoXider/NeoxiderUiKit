@@ -147,6 +147,7 @@ namespace Neo.UIKit
             ApplyTopBar();
             BindPopups();
             BindAutoButtons();
+            BindConventionAudioToggles();
 
             BindUi(root);
 
@@ -182,7 +183,9 @@ namespace Neo.UIKit
             foreach (PopupView popup in _popups.Values)
                 popup.Unwire();
 
+            UnwireAudioToggles();
             UnwireUi();
+            OnUnwire();
             IsBound = false;
         }
 
@@ -238,11 +241,84 @@ namespace Neo.UIKit
 
         private void BindAutoButtons()
         {
+            string pressPreset = UiKit.Config != null ? UiKit.Config.buttonPressPreset : null;
+            bool customPress = !string.IsNullOrEmpty(pressPreset) && pressPreset != "scale";
+
             foreach (Button element in ScreenRoot.Query<Button>().ToList())
             {
+                if (customPress)
+                    element.AddToClassList("uikit-press-" + pressPreset);
+
                 var view = new ButtonView();
                 view.Bind(element);
                 _autoButtons[element] = view;
+            }
+        }
+
+        private static readonly string[] SoundToggleNames = { "toggle_sound", "button_sound" };
+        private static readonly string[] MusicToggleNames = { "toggle_music", "button_music" };
+
+        private readonly List<ToggleView> _audioToggles = new List<ToggleView>();
+        private Action<bool> _soundSync;
+        private Action<bool> _musicSync;
+
+        /// <summary>
+        /// Name-convention audio toggles: elements called toggle_sound/button_sound and
+        /// toggle_music/button_music anywhere on the page become ToggleViews bound to
+        /// <see cref="UiKit.Audio"/> in both directions.
+        /// </summary>
+        private void BindConventionAudioToggles()
+        {
+            BindAudioToggleGroup(SoundToggleNames, () => UiKit.Audio.SoundOn, v => UiKit.Audio.SoundOn = v, ref _soundSync, h => UiKit.Audio.SoundChanged += h);
+            BindAudioToggleGroup(MusicToggleNames, () => UiKit.Audio.MusicOn, v => UiKit.Audio.MusicOn = v, ref _musicSync, h => UiKit.Audio.MusicChanged += h);
+        }
+
+        private void BindAudioToggleGroup(string[] names, Func<bool> get, Action<bool> set,
+            ref Action<bool> syncHandler, Action<Action<bool>> subscribe)
+        {
+            var views = new List<ToggleView>();
+            foreach (string toggleName in names)
+            {
+                foreach (VisualElement element in ScreenRoot.Query<VisualElement>(name: toggleName).ToList())
+                {
+                    element.AddToClassList("uikit-toggle");
+                    var view = new ToggleView();
+                    view.Bind(element);
+                    view.SetWithoutNotify(get());
+                    view.Changed += set;
+                    views.Add(view);
+                    _audioToggles.Add(view);
+                }
+            }
+
+            if (views.Count == 0)
+                return;
+
+            Action<bool> handler = value =>
+            {
+                for (int i = 0; i < views.Count; i++)
+                    views[i].SetWithoutNotify(value);
+            };
+            syncHandler = handler;
+            subscribe(handler);
+        }
+
+        private void UnwireAudioToggles()
+        {
+            for (int i = 0; i < _audioToggles.Count; i++)
+                _audioToggles[i].Unwire();
+            _audioToggles.Clear();
+
+            if (_soundSync != null)
+            {
+                UiKit.Audio.SoundChanged -= _soundSync;
+                _soundSync = null;
+            }
+
+            if (_musicSync != null)
+            {
+                UiKit.Audio.MusicChanged -= _musicSync;
+                _musicSync = null;
             }
         }
 
@@ -357,6 +433,16 @@ namespace Neo.UIKit
             }
 
             return null;
+        }
+
+        /// <summary>Closes every open popup of this page.</summary>
+        public void CloseAllPopups()
+        {
+            foreach (PopupView popup in _popups.Values)
+            {
+                if (popup.IsOpen)
+                    popup.Close();
+            }
         }
 
         /// <summary>Returns a popup by name; errors list the known popups of this page.</summary>
@@ -483,6 +569,11 @@ namespace Neo.UIKit
 
         /// <summary>Called after the full bind pass completes.</summary>
         protected virtual void OnBind()
+        {
+        }
+
+        /// <summary>User-partial counterpart of <see cref="OnBind"/>: undo manual subscriptions here.</summary>
+        protected virtual void OnUnwire()
         {
         }
 

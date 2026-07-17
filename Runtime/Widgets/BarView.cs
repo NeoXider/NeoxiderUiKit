@@ -16,6 +16,7 @@ namespace Neo.UIKit
         private EventCallback<GeometryChangedEvent> _geometryCallback;
         private float _progress;
         private bool _hasProgress;
+        private float _designWidth = -1f;
 
         /// <summary>The fill element, or null.</summary>
         public VisualElement Fill => _fill;
@@ -35,6 +36,12 @@ namespace Neo.UIKit
         {
             if (!_explicitFill)
                 _fill = FindFill(root);
+
+            // Let the importer's USS width apply so the design (full-progress) width can be
+            // measured; the fill must never grow past it (it is inset within the track art).
+            _designWidth = -1f;
+            if (_fill != null)
+                _fill.style.width = StyleKeyword.Null;
 
             _geometryCallback = OnGeometryChanged;
             root.RegisterCallback(_geometryCallback);
@@ -63,8 +70,19 @@ namespace Neo.UIKit
 
         private void OnGeometryChanged(GeometryChangedEvent evt)
         {
+            CaptureDesignWidth();
             if (_hasProgress)
                 Apply();
+        }
+
+        private void CaptureDesignWidth()
+        {
+            if (_designWidth > 0f || _fill == null)
+                return;
+
+            float width = _fill.resolvedStyle.width;
+            if (!float.IsNaN(width) && width > 0f)
+                _designWidth = width;
         }
 
         private void Apply()
@@ -72,11 +90,10 @@ namespace Neo.UIKit
             if (Root == null || _fill == null)
                 return;
 
-            float trackWidth = Root.resolvedStyle.width;
-            if (float.IsNaN(trackWidth) || trackWidth <= 0f)
+            if (_designWidth <= 0f)
                 return;
 
-            _fill.style.width = trackWidth * _progress;
+            _fill.style.width = _designWidth * _progress;
         }
 
         private static VisualElement FindFill(VisualElement root)

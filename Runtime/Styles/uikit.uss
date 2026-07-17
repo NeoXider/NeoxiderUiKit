@@ -154,8 +154,34 @@
     scale: 0.92;
 }
 
+/* Press presets (selected via UiKitConfig.buttonPressPreset; "scale" is the default above). */
+.fui_type_button.uikit-press-sink.uikit-pressed {
+    scale: 0.97;
+    translate: 0 6px;
+}
+
+.fui_type_button.uikit-press-pop.uikit-pressed {
+    scale: 1.08;
+}
+
+.fui_type_button.uikit-press-none.uikit-pressed {
+    scale: 1;
+}
+
 .fui_type_button.uikit-disabled {
     opacity: 0.5;
+}
+
+/* ===== Audio toggles ===== */
+
+/* Generic off state; the project override stylesheet can replace it with state textures. */
+.uikit-toggle {
+    transition-property: opacity;
+    transition-duration: 0.15s;
+}
+
+.uikit-toggle.is-off {
+    opacity: 0.55;
 }
 
 /* ===== Counter pulse ===== */

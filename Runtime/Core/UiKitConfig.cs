@@ -140,6 +140,16 @@ namespace Neo.UIKit
         [Header("Popup results (OpenAsync overrides)")]
         public List<PopupResultEntry> popupResults = new List<PopupResultEntry>();
 
+        [Header("Buttons")]
+        [Tooltip("Press animation preset applied to every button: scale (default), sink, pop, none.")]
+        public string buttonPressPreset = "scale";
+
+        [Header("Background layer")]
+        [Tooltip("Always-on backdrop sprite rendered behind the game world and the UI; auto-picked from the design's background image on generation.")]
+        public Sprite backgroundSprite;
+        [Tooltip("Sorting order of the backdrop sprite.")]
+        public int backgroundSortingOrder = -1000;
+
         [Header("Styles")]
         public StyleSheet uikitStyleSheet;
         [Tooltip("Optional project stylesheet applied after uikit.uss to override timings/curves without forking the package.")]

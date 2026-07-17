@@ -79,21 +79,43 @@ namespace Neo.UIKit
             return _pages.TryGetValue(pageId, out page) && page != null;
         }
 
-        /// <summary>Switches to the page: hides the whole current stack, then shows the target.</summary>
+        /// <summary>
+        /// Switches to the page: hides the whole current stack, then shows the target. When the
+        /// target is already in the stack it is not re-created — pages above it are hidden and
+        /// its popups are closed (so "restart" buttons inside popups land on a clean page).
+        /// </summary>
         public void Show(string pageId)
         {
             UiPageBase target = Get(pageId);
             if (target == null)
                 return;
 
+            if (_stack.Contains(target))
+            {
+                for (int i = _stack.Count - 1; i >= 0; i--)
+                {
+                    UiPageBase page = _stack[i];
+                    if (page == target)
+                        break;
+
+                    _stack.RemoveAt(i);
+                    PageHidden?.Invoke(page.PageId);
+                    page.HideInternal(i == _stack.Count, null);
+                }
+
+                target.CloseAllPopups();
+                _history.Add(target.PageId);
+                PageShown?.Invoke(target.PageId);
+                return;
+            }
+
             int top = _stack.Count - 1;
             for (int i = top; i >= 0; i--)
             {
                 UiPageBase page = _stack[i];
                 _stack.RemoveAt(i);
-                bool animate = i == top && page != target;
                 PageHidden?.Invoke(page.PageId);
-                page.HideInternal(animate, null);
+                page.HideInternal(i == top, null);
             }
 
             PushInternal(target);

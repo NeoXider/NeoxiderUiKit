@@ -6,9 +6,9 @@ namespace Neo.UIKit.Editor
     /// <summary>
     /// Proposes declarative button navigation from name conventions: button_close closes its popup
     /// (or pops the page), button_&lt;x&gt; opens the same-page popup_&lt;x&gt;, button_play shows
-    /// gameplay, button names matching a page id show that page. Buttons without a convention
-    /// (button_restart, button_buy, ...) get no proposal — inside popups they resolve through the
-    /// popup result mapping instead.
+    /// gameplay, button_restart re-shows its own page (closing popups), button names matching a
+    /// page id show that page. Buttons without a convention (button_buy, ...) get no proposal —
+    /// inside popups they resolve through the popup result mapping instead.
     /// </summary>
     public static class UiNavigationProposer
     {
@@ -75,6 +75,9 @@ namespace Neo.UIKit.Editor
 
             if (rest == "play" && pageIds.Contains("gameplay"))
                 return Entry(UiNavigationAction.Show, "gameplay");
+
+            if (rest == "restart")
+                return Entry(UiNavigationAction.Show, pageId);
 
             if (popupNames.Contains("popup_" + rest))
                 return Entry(UiNavigationAction.OpenPopup, pageId + "/popup_" + rest);

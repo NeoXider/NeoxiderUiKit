@@ -36,6 +36,7 @@ namespace Neo.UIKit.Editor
             UpdateNavigation(config, scan, report);
             UpdatePopupResults(config, scan, report);
             UpdateStyleSheet(config, report);
+            UpdateBackgroundLayer(config, scan, report);
 
             EditorUtility.SetDirty(config);
             return report;
@@ -262,6 +263,68 @@ namespace Neo.UIKit.Editor
             config.uikitStyleSheet = AssetDatabase.LoadAssetAtPath<StyleSheet>(path);
             if (config.uikitStyleSheet != null)
                 report.Add("~ uikit.uss reference assigned");
+        }
+
+        /// <summary>
+        /// Auto-picks the always-on backdrop sprite (add-only): the most frequent full-screen
+        /// "background" image of the design, so a freshly generated project gets a backdrop
+        /// behind the game world and the UI without any manual step.
+        /// </summary>
+        private static void UpdateBackgroundLayer(UiKitConfig config, UiScanResult scan, List<string> report)
+        {
+            if (config.backgroundSprite != null)
+                return;
+
+            // Screen-level backgrounds only: "background" elements inside popups are the
+            // designer's dim overlays (semi-transparent dark veils), not scenic backdrops.
+            var counts = new Dictionary<string, int>(StringComparer.OrdinalIgnoreCase);
+            var urlRegex = new System.Text.RegularExpressions.Regex(
+                "name=\"background\"[^>]*background-image:\\s*url\\(&quot;([^&]+)&quot;\\)");
+
+            foreach (UiPageModel page in scan.Pages)
+            {
+                if (string.IsNullOrEmpty(page.UxmlPath) || !System.IO.File.Exists(page.UxmlPath))
+                    continue;
+
+                string text = System.IO.File.ReadAllText(page.UxmlPath);
+                int firstPopup = text.IndexOf("fui_type_popup", StringComparison.Ordinal);
+
+                foreach (System.Text.RegularExpressions.Match match in urlRegex.Matches(text))
+                {
+                    if (firstPopup >= 0 && match.Index > firstPopup)
+                        continue;
+
+                    string url = match.Groups[1].Value;
+                    counts.TryGetValue(url, out int count);
+                    counts[url] = count + 1;
+                }
+            }
+
+            string best = null;
+            int bestCount = 0;
+            foreach (var pair in counts)
+            {
+                if (pair.Value > bestCount)
+                {
+                    best = pair.Key;
+                    bestCount = pair.Value;
+                }
+            }
+
+            if (best == null)
+                return;
+
+            const string prefix = "project://database/";
+            string assetPath = best.StartsWith(prefix, StringComparison.OrdinalIgnoreCase)
+                ? best.Substring(prefix.Length)
+                : best;
+            int query = assetPath.IndexOf('?');
+            if (query >= 0)
+                assetPath = assetPath.Substring(0, query);
+
+            config.backgroundSprite = AssetDatabase.LoadAssetAtPath<Sprite>(assetPath);
+            if (config.backgroundSprite != null)
+                report.Add("+ background layer sprite: " + assetPath);
         }
 
         private static IEnumerable<UiElementModel> AllElements(UiPageModel page)
