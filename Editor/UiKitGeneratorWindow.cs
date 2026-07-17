@@ -72,8 +72,7 @@ namespace Neo.UIKit.Editor
 
             var scroll = new ScrollView(ScrollViewMode.Vertical) { style = { flexGrow = 1 } };
             scroll.horizontalScrollerVisibility = ScrollerVisibility.Hidden;
-            scroll.contentContainer.style.flexShrink = 1;
-            scroll.contentContainer.style.maxWidth = Length.Percent(100);
+            scroll.verticalScrollerVisibility = ScrollerVisibility.Auto;
             root.Add(scroll);
 
             _generationBody = new VisualElement();
@@ -238,6 +237,21 @@ namespace Neo.UIKit.Editor
             };
         }
 
+        /// <summary>Narrows a field's label so its value keeps room in a narrow window.</summary>
+        private static T Compact<T>(T field) where T : VisualElement
+        {
+            var label = field.Q<Label>(className: "unity-base-field__label");
+            if (label != null)
+            {
+                label.style.minWidth = 78;
+                label.style.width = 78;
+            }
+
+            field.style.marginLeft = 0;
+            field.style.marginRight = 0;
+            return field;
+        }
+
         // ---------------------------------------------------------------- generation tab
 
         private void RebuildGenerationTab()
@@ -266,8 +280,9 @@ namespace Neo.UIKit.Editor
                 var row = new VisualElement { style = { flexDirection = FlexDirection.Row, alignItems = Align.Center } };
                 var popup = new PopupField<string>("Папка", _projectFolders, Mathf.Clamp(_projectIndex, 0, _projectFolders.Count - 1))
                 {
-                    style = { flexGrow = 1 }
+                    style = { flexGrow = 1, flexShrink = 1, minWidth = 40 }
                 };
+                Compact(popup);
                 popup.RegisterValueChangedCallback(evt =>
                 {
                     _projectIndex = _projectFolders.IndexOf(evt.newValue);
@@ -277,13 +292,14 @@ namespace Neo.UIKit.Editor
                 row.Add(popup);
 
                 var refresh = new Button(() => { DetectProjects(); Rescan(); RebuildGenerationTab(); }) { text = "Обновить" };
-                refresh.style.width = 84;
+                refresh.style.width = 78;
+                refresh.style.flexShrink = 0;
                 refresh.style.marginLeft = 6;
                 row.Add(refresh);
                 card.Add(row);
             }
 
-            var configField = new ObjectField("UiKitConfig") { objectType = typeof(UiKitConfig), value = _config };
+            var configField = Compact(new ObjectField("UiKitConfig") { objectType = typeof(UiKitConfig), value = _config });
             configField.tooltip = "Ассет конфигурации. Перетащите сюда свой сохранённый конфиг, чтобы переиспользовать его.";
             configField.RegisterValueChangedCallback(evt =>
             {
@@ -395,14 +411,14 @@ namespace Neo.UIKit.Editor
                 tooltip = element.FullPath,
                 style =
                 {
-                    minWidth = 40, flexGrow = 1, flexShrink = 1, color = new Color(0.85f, 0.86f, 0.88f),
+                    minWidth = 96, flexGrow = 1, flexShrink = 1, color = new Color(0.85f, 0.86f, 0.88f),
                     overflow = Overflow.Hidden, textOverflow = TextOverflow.Ellipsis,
                     unityTextOverflowPosition = TextOverflowPosition.End
                 }
             });
 
             UiWidgetKind effective = EffectiveKind(element);
-            var kindField = new EnumField(effective) { style = { width = 92, flexShrink = 0 } };
+            var kindField = new EnumField(effective) { style = { width = 84, flexShrink = 1, minWidth = 58 } };
             kindField.RegisterValueChangedCallback(evt =>
             {
                 SetKindOverride(element, (UiWidgetKind)evt.newValue);
@@ -412,7 +428,7 @@ namespace Neo.UIKit.Editor
 
             if (IsCounterKind(effective))
             {
-                var idField = new TextField { value = EffectiveCounterId(element), isDelayed = true, style = { width = 70, flexShrink = 0 } };
+                var idField = new TextField { value = EffectiveCounterId(element), isDelayed = true, style = { width = 64, flexShrink = 1, minWidth = 44 } };
                 idField.RegisterValueChangedCallback(evt => SetCounterIdOverride(element, evt.newValue));
                 row.Add(idField);
             }
