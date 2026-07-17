@@ -17,32 +17,35 @@ MonoBehaviour:
     visualTreeAsset: {fileID: 9197481963319205126, guid: 9d5c7ab9a0c43eb4781d87c0c5e8f8e2, type: 3}
     panelSettings: {fileID: 11400000, guid: 48dae52042e47f940ad9559b6aceebce, type: 2}
     sortingOrderBase: 0
-    showPreset: fade
-    hidePreset: 
+    showPreset: none
+    hidePreset: fade
     popupPreset: scale-pop
-    animationMode: 0
+    animationMode: 2
     isStart: 0
     topBarPath: 
+    backgroundSprite: {fileID: 0}
   - pageId: loading
     visualTreeAsset: {fileID: 9197481963319205126, guid: 1c4dffeab5d18924ca52b5ad12ba48d0, type: 3}
     panelSettings: {fileID: 11400000, guid: 48dae52042e47f940ad9559b6aceebce, type: 2}
     sortingOrderBase: 0
     showPreset: none
-    hidePreset: 
+    hidePreset: fade
     popupPreset: scale-pop
-    animationMode: 3
+    animationMode: 2
     isStart: 1
     topBarPath: 
+    backgroundSprite: {fileID: 0}
   - pageId: mainmenu
     visualTreeAsset: {fileID: 9197481963319205126, guid: b60915d89432d69419da645eb0d0041d, type: 3}
     panelSettings: {fileID: 11400000, guid: 48dae52042e47f940ad9559b6aceebce, type: 2}
     sortingOrderBase: 0
     showPreset: none
-    hidePreset: 
+    hidePreset: fade
     popupPreset: scale-pop
-    animationMode: 3
+    animationMode: 2
     isStart: 0
     topBarPath: 
+    backgroundSprite: {fileID: 21300000, guid: e62c0115943b1654e99659e4cf566faa, type: 3}
   counters:
   - id: coin
     paths:
@@ -65,9 +68,15 @@ MonoBehaviour:
   - buttonPath: gameplay/button_pause
     action: 4
     targetId: gameplay/popup_pause
+  - buttonPath: gameplay/popup_pause/button_restart
+    action: 1
+    targetId: gameplay
   - buttonPath: gameplay/popup_pause/button_close
     action: 5
     targetId: 
+  - buttonPath: gameplay/popup_endgame/button_restart
+    action: 1
+    targetId: gameplay
   - buttonPath: gameplay/popup_endgame/button_main_menu
     action: 1
     targetId: mainmenu
@@ -80,12 +89,6 @@ MonoBehaviour:
   - buttonPath: mainmenu/popup_setting/button_close
     action: 5
     targetId: 
-  - buttonPath: gameplay/popup_pause/button_restart
-    action: 1
-    targetId: gameplay
-  - buttonPath: gameplay/popup_endgame/button_restart
-    action: 1
-    targetId: gameplay
   popupResults:
   - buttonPath: gameplay/popup_pause/button_restart
     result: restart
@@ -100,8 +103,6 @@ MonoBehaviour:
   buttonPressPreset: scale
   popupCascadeEnabled: 1
   pageCascadeEnabled: 1
-  backgroundSprite: {fileID: 21300000, guid: e62c0115943b1654e99659e4cf566faa, type: 3}
-  backgroundSortingOrder: -1000
   uikitStyleSheet: {fileID: 7433441132597879392, guid: 7ecbf43899407c54c92fd000d8cd122e, type: 3}
   projectOverrideStyleSheet: {fileID: 7433441132597879392, guid: 067c9412650fc6c4a962fddb63b0838a, type: 3}
   clickSound: {fileID: 0}
@@ -117,4 +118,19 @@ MonoBehaviour:
   scanOverrides: []
   manageTimeScale: 1
   pausePopupPath: 
-  flow: []
+  flow:
+  - moment: 0
+    action: 4
+    targetId: gameplay/popup_endgame
+  - moment: 1
+    action: 4
+    targetId: gameplay/popup_endgame
+  - moment: 6
+    action: 4
+    targetId: gameplay/popup_endgame
+  - moment: 2
+    action: 4
+    targetId: gameplay/popup_pause
+  - moment: 4
+    action: 1
+    targetId: mainmenu

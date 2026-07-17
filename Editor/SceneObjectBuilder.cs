@@ -84,52 +84,8 @@ namespace Neo.UIKit.Editor
                     report.Orphaned.Add(pageId);
             }
 
-            EnsureBackgroundLayer(root.transform, config, report);
-
             EditorSceneManager.MarkSceneDirty(UnityEngine.SceneManagement.SceneManager.GetActiveScene());
             return report;
-        }
-
-        private static void EnsureBackgroundLayer(Transform root, UiKitConfig config, SceneBuildReport report)
-        {
-            if (config.backgroundSprite == null)
-                return;
-
-            UiBackgroundLayer[] layers =
-                UnityEngine.Object.FindObjectsByType<UiBackgroundLayer>(FindObjectsInactive.Include, FindObjectsSortMode.None);
-            UiBackgroundLayer layer = layers.Length > 0 ? layers[0] : null;
-
-            GameObject go;
-            if (layer == null)
-            {
-                go = new GameObject("UI_Background");
-                Undo.RegisterCreatedObjectUndo(go, UndoGroupName);
-                go.transform.SetParent(root, false);
-                go.transform.SetAsFirstSibling();
-                go.AddComponent<Canvas>();
-                layer = go.AddComponent<UiBackgroundLayer>();
-                report.Created.Add("UI_Background");
-            }
-            else
-            {
-                go = layer.gameObject;
-                Undo.RecordObject(go, UndoGroupName);
-                report.Updated.Add("UI_Background");
-            }
-
-            Canvas canvas = go.GetComponent<Canvas>();
-            canvas.renderMode = RenderMode.ScreenSpaceCamera;
-            canvas.sortingOrder = config.backgroundSortingOrder;
-            if (canvas.worldCamera == null)
-                canvas.worldCamera = Camera.main;
-
-            layer.EnsureImage();
-            if (layer.Image != null)
-                layer.Image.sprite = config.backgroundSprite;
-
-            var serialized = new SerializedObject(layer);
-            serialized.FindProperty("sortingOrder").intValue = config.backgroundSortingOrder;
-            serialized.ApplyModifiedProperties();
         }
 
         private static GameObject EnsureBootstrap(UiKitConfig config, SceneBuildReport report)

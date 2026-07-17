@@ -69,6 +69,8 @@ namespace Neo.UIKit
             public bool isStart;
             [Tooltip("Optional path (relative to the page) of the top bar container that gets the intro animation.")]
             public string topBarPath = "";
+            [Tooltip("Optional fullscreen background sprite for this page (behind its UI). Leave empty for a transparent page, e.g. gameplay where the game world shows through.")]
+            public Sprite backgroundSprite;
         }
 
         /// <summary>A global counter and the element paths it is displayed at.</summary>
@@ -149,12 +151,6 @@ namespace Neo.UIKit
         public bool popupCascadeEnabled;
         [Tooltip("When on, a page's interface elements appear one after another when the page is shown.")]
         public bool pageCascadeEnabled;
-
-        [Header("Background layer")]
-        [Tooltip("Always-on backdrop sprite rendered behind the game world and the UI; auto-picked from the design's background image on generation.")]
-        public Sprite backgroundSprite;
-        [Tooltip("Sorting order of the backdrop sprite.")]
-        public int backgroundSortingOrder = -1000;
 
         [Header("Styles")]
         public StyleSheet uikitStyleSheet;

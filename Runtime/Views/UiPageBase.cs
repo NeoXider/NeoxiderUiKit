@@ -164,12 +164,28 @@ namespace Neo.UIKit
             BindInternal(root);
         }
 
+        /// <summary>
+        /// Applies the page's own fullscreen background sprite (from the config) as the screen
+        /// root's background image. Pages without a configured sprite stay transparent — e.g.
+        /// gameplay, where the game world renders behind the screen-space UI.
+        /// </summary>
+        private void ApplyBackground()
+        {
+            Sprite sprite = ConfigEntry?.backgroundSprite;
+            if (sprite == null || ScreenRoot == null)
+                return;
+
+            ScreenRoot.style.backgroundImage = new StyleBackground(sprite);
+            ScreenRoot.style.unityBackgroundScaleMode = ScaleMode.ScaleAndCrop;
+        }
+
         private void BindInternal(VisualElement root)
         {
             IsBound = true;
             ScreenRoot = root.Q<VisualElement>(className: "fui_type_screen") ?? root;
 
             AttachStyleSheets(root);
+            ApplyBackground();
 
             ScreenRoot.AddToClassList("uikit-page");
             UiAnimations.ApplyPresetClass(ScreenRoot, ShowPreset);

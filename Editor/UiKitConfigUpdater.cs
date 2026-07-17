@@ -85,23 +85,15 @@ namespace Neo.UIKit.Editor
         }
 
         /// <summary>
-        /// Recommended per-page defaults: loading is static but dissolves on hide (the menu shows
-        /// through), mainmenu is fully static, everything else keeps the animated defaults.
+        /// Recommended per-page defaults for a clean dissolve: the incoming page appears instantly
+        /// (its own opaque background is present from the first frame) and the outgoing page fades
+        /// out on top of it — so one page dissolves into the next with no gap or flash.
         /// </summary>
         private static void ApplyPageDefaults(UiKitConfig.PageEntry entry)
         {
-            switch (entry.pageId)
-            {
-                case "loading":
-                    entry.showPreset = "none";
-                    entry.hidePreset = "fade";
-                    entry.animationMode = UiAnimationMode.BackwardOnly;
-                    break;
-                case "mainmenu":
-                    entry.showPreset = "none";
-                    entry.animationMode = UiAnimationMode.None;
-                    break;
-            }
+            entry.showPreset = "none";
+            entry.hidePreset = "fade";
+            entry.animationMode = UiAnimationMode.BackwardOnly;
         }
 
         private static void EnsureStartPage(UiKitConfig config, List<string> report)
@@ -288,20 +280,43 @@ namespace Neo.UIKit.Editor
         }
 
         /// <summary>
-        /// Auto-picks the always-on backdrop sprite (add-only): the most frequent full-screen
-        /// "background" image of the design, so a freshly generated project gets a backdrop
-        /// behind the game world and the UI without any manual step.
+        /// Per-page backgrounds (add-only). A page that already has a screen-level "background"
+        /// image in its UXML (e.g. loading) renders its own and is left untouched. A transparent
+        /// menu-like page gets the design's scenic background so it isn't empty; game pages (id
+        /// starting with "game") are left transparent so the game world shows through.
         /// </summary>
         private static void UpdateBackgroundLayer(UiKitConfig config, UiScanResult scan, List<string> report)
         {
-            if (config.backgroundSprite != null)
+            Sprite scenic = FindScenicBackground(scan);
+            if (scenic == null)
                 return;
 
-            // Screen-level backgrounds only: "background" elements inside popups are the
-            // designer's dim overlays (semi-transparent dark veils), not scenic backdrops.
-            var counts = new Dictionary<string, int>(StringComparer.OrdinalIgnoreCase);
             var urlRegex = new System.Text.RegularExpressions.Regex(
                 "name=\"background\"[^>]*background-image:\\s*url\\(&quot;([^&]+)&quot;\\)");
+
+            foreach (UiPageModel page in scan.Pages)
+            {
+                UiKitConfig.PageEntry entry = config.GetPage(page.PageId);
+                if (entry == null || entry.backgroundSprite != null)
+                    continue;
+
+                if (page.PageId.StartsWith("game", StringComparison.OrdinalIgnoreCase))
+                    continue; // game world renders behind a transparent screen
+
+                if (HasScreenBackground(page, urlRegex))
+                    continue; // renders its own background from the UXML
+
+                entry.backgroundSprite = scenic;
+                report.Add($"+ page '{page.PageId}': background -> {scenic.name}");
+            }
+        }
+
+        /// <summary>Finds the design's scenic backdrop: the most frequent screen-level "background" image.</summary>
+        private static Sprite FindScenicBackground(UiScanResult scan)
+        {
+            var urlRegex = new System.Text.RegularExpressions.Regex(
+                "name=\"background\"[^>]*background-image:\\s*url\\(&quot;([^&]+)&quot;\\)");
+            var counts = new Dictionary<string, int>(StringComparer.OrdinalIgnoreCase);
 
             foreach (UiPageModel page in scan.Pages)
             {
@@ -310,12 +325,10 @@ namespace Neo.UIKit.Editor
 
                 string text = System.IO.File.ReadAllText(page.UxmlPath);
                 int firstPopup = text.IndexOf("fui_type_popup", StringComparison.Ordinal);
-
                 foreach (System.Text.RegularExpressions.Match match in urlRegex.Matches(text))
                 {
                     if (firstPopup >= 0 && match.Index > firstPopup)
-                        continue;
-
+                        continue; // popup "background" = dim overlay, not scenic
                     string url = match.Groups[1].Value;
                     counts.TryGetValue(url, out int count);
                     counts[url] = count + 1;
@@ -326,27 +339,34 @@ namespace Neo.UIKit.Editor
             int bestCount = 0;
             foreach (var pair in counts)
             {
-                if (pair.Value > bestCount)
-                {
-                    best = pair.Key;
-                    bestCount = pair.Value;
-                }
+                if (pair.Value > bestCount) { best = pair.Key; bestCount = pair.Value; }
             }
 
-            if (best == null)
-                return;
+            return best != null ? AssetDatabase.LoadAssetAtPath<Sprite>(ToAssetPath(best)) : null;
+        }
 
+        private static bool HasScreenBackground(UiPageModel page, System.Text.RegularExpressions.Regex urlRegex)
+        {
+            if (string.IsNullOrEmpty(page.UxmlPath) || !System.IO.File.Exists(page.UxmlPath))
+                return false;
+
+            string text = System.IO.File.ReadAllText(page.UxmlPath);
+            int firstPopup = text.IndexOf("fui_type_popup", StringComparison.Ordinal);
+            foreach (System.Text.RegularExpressions.Match match in urlRegex.Matches(text))
+            {
+                if (firstPopup < 0 || match.Index < firstPopup)
+                    return true;
+            }
+
+            return false;
+        }
+
+        private static string ToAssetPath(string url)
+        {
             const string prefix = "project://database/";
-            string assetPath = best.StartsWith(prefix, StringComparison.OrdinalIgnoreCase)
-                ? best.Substring(prefix.Length)
-                : best;
+            string assetPath = url.StartsWith(prefix, StringComparison.OrdinalIgnoreCase) ? url.Substring(prefix.Length) : url;
             int query = assetPath.IndexOf('?');
-            if (query >= 0)
-                assetPath = assetPath.Substring(0, query);
-
-            config.backgroundSprite = AssetDatabase.LoadAssetAtPath<Sprite>(assetPath);
-            if (config.backgroundSprite != null)
-                report.Add("+ background layer sprite: " + assetPath);
+            return query >= 0 ? assetPath.Substring(0, query) : assetPath;
         }
 
         /// <summary>
