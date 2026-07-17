@@ -186,8 +186,7 @@ namespace Neo.UIKit.Editor
             sb.AppendLine("using UnityEngine.UIElements;");
             sb.AppendLine("using Neo.UIKit;");
             sb.AppendLine();
-            sb.AppendLine($"namespace {settings.EffectiveNamespace}");
-            sb.AppendLine("{");
+            AppendNamespaceOpen(sb, settings);
             sb.AppendLine($"    /// <summary>Generated typed view of the \"{plan.Model.PageId}\" page.</summary>");
             sb.AppendLine($"    public partial class {plan.ClassName} : UiPageBase");
             sb.AppendLine("    {");
@@ -257,7 +256,7 @@ namespace Neo.UIKit.Editor
                 AppendPopupClass(sb, popup);
 
             sb.AppendLine("    }");
-            sb.AppendLine("}");
+            AppendNamespaceClose(sb, settings);
             return sb.ToString();
         }
 
@@ -265,16 +264,32 @@ namespace Neo.UIKit.Editor
         public static string GenerateUserPartialSource(UiPagePlan plan, UiKitGenerationSettings settings)
         {
             var sb = new StringBuilder();
-            sb.AppendLine($"namespace {settings.EffectiveNamespace}");
-            sb.AppendLine("{");
+            AppendNamespaceOpen(sb, settings);
             sb.AppendLine($"    public partial class {plan.ClassName}");
             sb.AppendLine("    {");
             sb.AppendLine("        protected override void OnBind()");
             sb.AppendLine("        {");
             sb.AppendLine("        }");
             sb.AppendLine("    }");
-            sb.AppendLine("}");
+            AppendNamespaceClose(sb, settings);
             return sb.ToString();
+        }
+
+        /// <summary>Opens the namespace block when configured; global scope emits nothing.</summary>
+        internal static void AppendNamespaceOpen(StringBuilder sb, UiKitGenerationSettings settings)
+        {
+            if (settings.HasNamespace)
+            {
+                sb.AppendLine($"namespace {settings.EffectiveNamespace}");
+                sb.AppendLine("{");
+            }
+        }
+
+        /// <summary>Closes the namespace block opened by <see cref="AppendNamespaceOpen"/>.</summary>
+        internal static void AppendNamespaceClose(StringBuilder sb, UiKitGenerationSettings settings)
+        {
+            if (settings.HasNamespace)
+                sb.AppendLine("}");
         }
 
         private static void AppendHeader(StringBuilder sb, string sourcePath)

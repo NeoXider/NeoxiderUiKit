@@ -77,23 +77,37 @@ Show/Hide:
 
 ## Анимации
 
-Три уровня, от простого к гибкому:
+Анимации переходов страниц и попапов **управляются кодовым твином `UiTween`** (schedule по `Time.realtimeSinceStartup`), а не CSS-переходами по классам. Причина: UI Toolkit не проигрывает transition при **снятии** класса — открытие анимировалось бы, а закрытие «схлопывалось» мгновенно. Твин задаёт inline-стили каждый кадр, работает при `timeScale = 0` (пауза) и всегда доигрывает. USS остаётся для статичных состояний, dim и каскада.
 
-1. **USS-пресеты в `uikit.uss`** (класс-driven, только `opacity/translate/scale`, специфичность ≥ 2 классов — правила kit'а выигрывают у импортёра):
-   - страницы: `fade`, `slide-up`, `slide-down`, `slide-left`, `slide-right`, `scale`, `none`;
-   - попапы: `scale-pop`, `fade`, `slide-up`, `none` + dim-подложка (`background` → `uikit-dim`) + intro заголовка `panel_header`;
-   - intro top-бара страницы (`uikit-topbar`, путь per-страница в конфиге);
-   - кнопки: press-пульс `uikit-pressed`; счётчик: пульс `uikit-counter-pulse` при изменении значения.
-   Механика: `UssTransitionAnimator` пропускает кадр (`schedule`) → добавляет `is-open` → ждёт `TransitionEndEvent` с таймаут-гарантией; на hide добавляется `is-hiding`.
-2. **Проектный override-USS** (`projectOverrideStyleSheet` в конфиге) — правка таймингов/кривых/дистанций без кода и без форка пакета; подключается после `uikit.uss`.
+Уровни, от простого к гибкому:
+
+1. **Готовые пресеты** (выбор в конфиге per-страница/попап):
+   - страницы: `fade`, `scale`, `slide-up/down/left/right`, `none`;
+   - попапы — **анимируется контент-панель** (`fui_type_panel`/`fui_as_panel` и `panel_header` внутри попапа получают класс `uikit-popup-panel`), затемнение (`background` → `uikit-dim`) плавно проявляется в такт:
+     - `scale-pop` (по умолчанию) — панелька «выпрыгивает» с 0 до 1 (`ease-out-back`);
+     - `zoom-in` — панелька из увеличенного (1.5) прозрачного состояния уменьшается до нормального и проявляется;
+     - `slide-up` — панелька выезжает снизу; `fade`, `none`;
+     - **закрытие** — панелька плавно уменьшается обратно (scale 1 → 0) вместе с содержимым, dim гаснет; пауза снимается **только после завершения** анимации;
+   - **каскадный режим** — бонус (`popupCascadeEnabled` / `pageCascadeEnabled` в конфиге, по умолчанию выключен): элементы появляются по очереди (`UiCascade`) после «выпрыгивания» панельки / показа страницы; на попапе стартовые страницы с фейковой загрузкой из page-каскада исключены (у них анимируется бар);
+   - кнопки: press-пресеты `scale`/`sink`/`pop`/`none` (`buttonPressPreset`); счётчик: пульс `uikit-counter-pulse` при изменении значения.
+2. **Проектный override-USS** (`projectOverrideStyleSheet` в конфиге) — правка таймингов/кривых/дистанций dim/каскада без кода и без форка пакета; подключается после `uikit.uss`.
 3. **Кодовые точки расширения**:
-   - `IUiAnimator { void Show(VisualElement, Action onDone); void Hide(VisualElement, Action onDone); }` + `UiAnimations.Register("my-preset", animator)` — свой пресет появляется в выпадашках окна рядом со встроенными;
+   - `IUiAnimator` + `UiAnimations.Register("my-preset", animator)` — свой пресет появляется в выпадашках окна рядом со встроенными;
    - виртуальные `PlayShowAnimation` / `PlayHideAnimation` в `UiPageBase` и `PopupView` — точечное переопределение в partial-классе;
+   - `UiTween.Play(host, durationMs, apply, ease, onDone)` и `UiCascade.Play(...)` — переиспользуемые утилиты для своей анимации из игрового кода;
    - `ButtonView.SetPressAnimation(IUiAnimator)` — замена press-пульса per-кнопка.
 
-Per-страница в конфиге: `showPreset`, необязательный `hidePreset` (пусто = тот же, что show), `popupPreset` и **режим** `UiAnimationMode`: `ForwardAndBackward` / `ForwardOnly` (только показ) / `BackwardOnly` (только скрытие) / `None`. `None` и пресет `none` применяют конечное состояние мгновенно (`InstantUiAnimator`).
+Per-страница в конфиге: `showPreset`, необязательный `hidePreset` (пусто = тот же, что show), `popupPreset` и **режим** `UiAnimationMode`: `ForwardAndBackward` / `ForwardOnly` (только показ) / `BackwardOnly` (только скрытие) / `None`. `None` и пресет `none` применяют конечное состояние мгновенно.
 
-**Рекомендуемый дефолт проекта:** страницы `loading` и `mainmenu` — **без страничных анимаций** (пресет `none` / `UiAnimationMode.None`). Экран загрузки — первое, что видит игрок, и появляться он должен мгновенно; переход loading → mainmenu тоже чище без двойного fade. Анимации оставляйте на `gameplay` и попапах.
+**Дефолты, которые генератор проставляет сам** (add-only, `UiKitConfigUpdater`):
+- `loading` — стартовая, `showPreset = none`, `hidePreset = fade`, режим `BackwardOnly`: появляется мгновенно, а при уходе **растворяется**, открывая меню;
+- `mainmenu` — статичная (`none` / `None`);
+- остальные страницы (`gameplay` и любые новые) — `fade` / `ForwardAndBackward`.
+
+## Flow-моменты и страницы Win/Lose
+
+Генератор предлагает маппинг игровых моментов на действия (add-only, правится в конфиге):
+`Win` / `Lose` открывают попап `popup_win` / `popup_lose`, а если их нет — общий `popup_endgame`; `GameEnd → popup_endgame`; `Pause → popup_pause`; `Menu → mainmenu`. Если дизайнер сделает отдельные **страницы** `win` / `lose` (а не попапы), генератор смапит момент на `Show(win)` / `Show(lose)`. Игра дёргает моменты через `UiKit.Flow` или адаптер `IUiFlowSource` — kit сам выполнит настроенное действие.
 
 ## Звук — три способа, работают вместе
 

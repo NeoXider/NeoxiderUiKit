@@ -85,6 +85,15 @@ namespace Neo.UIKit
             UiKit.Counters.Define(counterId).Set(value);
         }
 
+        /// <summary>
+        /// Raises a game moment manually and runs its configured page action (open popup / show
+        /// page). Use this when the game has no <see cref="IUiFlowSource"/> adapter connected.
+        /// </summary>
+        public void Raise(UiGameMoment moment)
+        {
+            Execute(moment);
+        }
+
         private static void Execute(UiGameMoment moment)
         {
             UiKitConfig config = UiKit.Config;

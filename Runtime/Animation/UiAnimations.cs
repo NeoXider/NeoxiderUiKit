@@ -26,7 +26,7 @@ namespace Neo.UIKit
 
         private static readonly string[] BuiltInNames =
         {
-            "fade", "slide-up", "slide-down", "slide-left", "slide-right", "scale", "scale-pop", "none"
+            "fade", "slide-up", "slide-down", "slide-left", "slide-right", "scale", "scale-pop", "zoom-in", "none"
         };
 
         private static Dictionary<string, IUiAnimator> _custom = new Dictionary<string, IUiAnimator>(StringComparer.Ordinal);
@@ -118,16 +118,19 @@ namespace Neo.UIKit
 
     /// <summary>
     /// Class-driven animator for the built-in USS presets: skips one frame before adding "is-open"
-    /// (so the transition has a previous style), then waits for TransitionEndEvent with a scheduled
-    /// timeout fallback (duration + 0.1s).
+    /// (so the transition has a previous style), then completes after a fixed duration. A fixed
+    /// wait is used on purpose instead of TransitionEndEvent — a popup animates its content panel
+    /// (scale) while the root animates opacity, and unrelated properties would fire an early
+    /// TransitionEndEvent that cuts the animation short.
     /// </summary>
     internal sealed class UssTransitionAnimator : IUiAnimator
     {
-        private readonly long _timeoutMs;
+        private readonly long _durationMs;
 
         public UssTransitionAnimator(float durationSeconds)
         {
-            _timeoutMs = (long)(durationSeconds * 1000f) + 100;
+            // Cover the longest built-in transition (the popup panel at 0.3s) plus a small buffer.
+            _durationMs = (long)(durationSeconds * 1000f) + 130;
         }
 
         public void Show(VisualElement element, Action onDone)
@@ -141,7 +144,7 @@ namespace Neo.UIKit
             element.schedule.Execute(() =>
             {
                 element.AddToClassList(UiAnimations.OpenClass);
-                WaitForTransition(element, onDone);
+                element.schedule.Execute(() => onDone?.Invoke()).StartingIn(_durationMs);
             });
         }
 
@@ -155,37 +158,11 @@ namespace Neo.UIKit
 
             element.AddToClassList(UiAnimations.HidingClass);
             element.RemoveFromClassList(UiAnimations.OpenClass);
-            WaitForTransition(element, () =>
+            element.schedule.Execute(() =>
             {
                 element.RemoveFromClassList(UiAnimations.HidingClass);
                 onDone?.Invoke();
-            });
-        }
-
-        private void WaitForTransition(VisualElement element, Action onDone)
-        {
-            bool completed = false;
-            EventCallback<TransitionEndEvent> callback = null;
-            IVisualElementScheduledItem timeout = null;
-
-            Action finish = () =>
-            {
-                if (completed)
-                    return;
-                completed = true;
-                element.UnregisterCallback(callback);
-                timeout?.Pause();
-                onDone?.Invoke();
-            };
-
-            callback = evt =>
-            {
-                if (evt.target == element)
-                    finish();
-            };
-
-            element.RegisterCallback(callback);
-            timeout = element.schedule.Execute(() => finish()).StartingIn(_timeoutMs);
+            }).StartingIn(_durationMs);
         }
     }
 }

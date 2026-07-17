@@ -37,23 +37,29 @@ namespace Neo.UIKit
             if (!_explicitFill)
                 _fill = FindFill(root);
 
-            // Let the importer's USS width apply so the design (full-progress) width can be
-            // measured; the fill must never grow past it (it is inset within the track art).
+            // The design (full-progress) width comes from the importer's USS; it can only be read
+            // from resolvedStyle once layout has run, i.e. on the first GeometryChangedEvent.
+            // Until then the fill is hidden so it never flashes at its USS (100%) width.
             _designWidth = -1f;
             if (_fill != null)
+            {
                 _fill.style.width = StyleKeyword.Null;
+                _fill.style.visibility = Visibility.Hidden;
+            }
 
             _geometryCallback = OnGeometryChanged;
             root.RegisterCallback(_geometryCallback);
-
-            if (_hasProgress)
-                Apply();
+            if (_fill != null)
+                _fill.RegisterCallback(_geometryCallback);
         }
 
         protected override void OnUnwire()
         {
-            if (_geometryCallback != null && Root != null)
-                Root.UnregisterCallback(_geometryCallback);
+            if (_geometryCallback != null)
+            {
+                Root?.UnregisterCallback(_geometryCallback);
+                _fill?.UnregisterCallback(_geometryCallback);
+            }
 
             _geometryCallback = null;
             if (!_explicitFill)
@@ -70,27 +76,28 @@ namespace Neo.UIKit
 
         private void OnGeometryChanged(GeometryChangedEvent evt)
         {
-            CaptureDesignWidth();
+            // Capture the design width from the very first laid-out width, before we ever shrink
+            // the fill (afterwards resolvedStyle.width reflects our own value, not the design).
+            if (_designWidth <= 0f && _fill != null)
+            {
+                float width = _fill.resolvedStyle.width;
+                if (!float.IsNaN(width) && width > 0f)
+                {
+                    _designWidth = width;
+                    Apply();
+                    _fill.style.visibility = StyleKeyword.Null;
+                }
+
+                return;
+            }
+
             if (_hasProgress)
                 Apply();
         }
 
-        private void CaptureDesignWidth()
-        {
-            if (_designWidth > 0f || _fill == null)
-                return;
-
-            float width = _fill.resolvedStyle.width;
-            if (!float.IsNaN(width) && width > 0f)
-                _designWidth = width;
-        }
-
         private void Apply()
         {
-            if (Root == null || _fill == null)
-                return;
-
-            if (_designWidth <= 0f)
+            if (Root == null || _fill == null || _designWidth <= 0f)
                 return;
 
             _fill.style.width = _designWidth * _progress;

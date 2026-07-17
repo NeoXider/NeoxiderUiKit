@@ -43,11 +43,21 @@ namespace Neo.UIKit.Editor
         /// <summary>When true, AssetDatabase.Refresh is called after writing files under Assets.</summary>
         public bool refreshAssets = true;
 
-        /// <summary>Namespace including the optional project sub-namespace.</summary>
-        public string EffectiveNamespace =>
-            string.IsNullOrEmpty(projectName)
-                ? rootNamespace
-                : rootNamespace + "." + NameSanitizer.ToPascalIdentifier(projectName);
+        /// <summary>True when the generated code is emitted without a namespace (global scope).</summary>
+        public bool HasNamespace => !string.IsNullOrWhiteSpace(rootNamespace);
+
+        /// <summary>Namespace including the optional project sub-namespace, or empty for global scope.</summary>
+        public string EffectiveNamespace
+        {
+            get
+            {
+                if (!HasNamespace)
+                    return "";
+                return string.IsNullOrEmpty(projectName)
+                    ? rootNamespace
+                    : rootNamespace + "." + NameSanitizer.ToPascalIdentifier(projectName);
+            }
+        }
 
         /// <summary>Output folder including the optional project subfolder.</summary>
         public string EffectiveOutputFolder =>

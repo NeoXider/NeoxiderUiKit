@@ -37,6 +37,7 @@ namespace Neo.UIKit.Editor
             UpdatePopupResults(config, scan, report);
             UpdateStyleSheet(config, report);
             UpdateBackgroundLayer(config, scan, report);
+            UpdateFlow(config, scan, report);
 
             EditorUtility.SetDirty(config);
             return report;
@@ -50,6 +51,7 @@ namespace Neo.UIKit.Editor
                 if (entry == null)
                 {
                     entry = new UiKitConfig.PageEntry { pageId = page.PageId };
+                    ApplyPageDefaults(entry);
                     config.pages.Add(entry);
                     report.Add($"+ page '{page.PageId}'");
                 }
@@ -80,6 +82,26 @@ namespace Neo.UIKit.Editor
             }
 
             EnsureStartPage(config, report);
+        }
+
+        /// <summary>
+        /// Recommended per-page defaults: loading is static but dissolves on hide (the menu shows
+        /// through), mainmenu is fully static, everything else keeps the animated defaults.
+        /// </summary>
+        private static void ApplyPageDefaults(UiKitConfig.PageEntry entry)
+        {
+            switch (entry.pageId)
+            {
+                case "loading":
+                    entry.showPreset = "none";
+                    entry.hidePreset = "fade";
+                    entry.animationMode = UiAnimationMode.BackwardOnly;
+                    break;
+                case "mainmenu":
+                    entry.showPreset = "none";
+                    entry.animationMode = UiAnimationMode.None;
+                    break;
+            }
         }
 
         private static void EnsureStartPage(UiKitConfig config, List<string> report)
@@ -325,6 +347,53 @@ namespace Neo.UIKit.Editor
             config.backgroundSprite = AssetDatabase.LoadAssetAtPath<Sprite>(assetPath);
             if (config.backgroundSprite != null)
                 report.Add("+ background layer sprite: " + assetPath);
+        }
+
+        /// <summary>
+        /// Proposes flow mappings from name conventions (add-only): Win/Lose/GameEnd open the
+        /// matching popup (popup_win / popup_lose / popup_endgame) or show the matching page
+        /// (win / lose); Pause opens popup_pause; Menu shows mainmenu.
+        /// </summary>
+        private static void UpdateFlow(UiKitConfig config, UiScanResult scan, List<string> report)
+        {
+            var popupPaths = new Dictionary<string, string>(StringComparer.Ordinal);
+            var pageIds = new HashSet<string>(StringComparer.Ordinal);
+            foreach (UiPageModel page in scan.Pages)
+            {
+                pageIds.Add(page.PageId);
+                foreach (UiPopupModel popup in page.Popups)
+                {
+                    if (!popupPaths.ContainsKey(popup.Name))
+                        popupPaths.Add(popup.Name, page.PageId + "/" + popup.Name);
+                }
+            }
+
+            void Propose(UiGameMoment moment, string popupName, string pageName)
+            {
+                foreach (UiKitConfig.FlowEntry existing in config.flow)
+                {
+                    if (existing != null && existing.moment == moment)
+                        return;
+                }
+
+                UiKitConfig.FlowEntry entry = null;
+                if (popupName != null && popupPaths.TryGetValue(popupName, out string path))
+                    entry = new UiKitConfig.FlowEntry { moment = moment, action = UiNavigationAction.OpenPopup, targetId = path };
+                else if (pageName != null && pageIds.Contains(pageName))
+                    entry = new UiKitConfig.FlowEntry { moment = moment, action = UiNavigationAction.Show, targetId = pageName };
+
+                if (entry != null)
+                {
+                    config.flow.Add(entry);
+                    report.Add($"+ flow {moment} -> {entry.action} '{entry.targetId}'");
+                }
+            }
+
+            Propose(UiGameMoment.Win, popupPaths.ContainsKey("popup_win") ? "popup_win" : "popup_endgame", "win");
+            Propose(UiGameMoment.Lose, popupPaths.ContainsKey("popup_lose") ? "popup_lose" : "popup_endgame", "lose");
+            Propose(UiGameMoment.GameEnd, "popup_endgame", null);
+            Propose(UiGameMoment.Pause, "popup_pause", null);
+            Propose(UiGameMoment.Menu, null, "mainmenu");
         }
 
         private static IEnumerable<UiElementModel> AllElements(UiPageModel page)

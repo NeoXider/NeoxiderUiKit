@@ -114,8 +114,11 @@ namespace Neo.UIKit
             {
                 UiPageBase page = _stack[i];
                 _stack.RemoveAt(i);
+                bool animate = i == top;
+                if (animate)
+                    page.SetSortingOrder(100); // draw above the incoming page while fading out
                 PageHidden?.Invoke(page.PageId);
-                page.HideInternal(i == top, null);
+                page.HideInternal(animate, null);
             }
 
             PushInternal(target);

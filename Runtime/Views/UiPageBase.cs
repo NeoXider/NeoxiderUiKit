@@ -27,6 +27,12 @@ namespace Neo.UIKit
         private bool _pendingShow;
         private bool _isShown;
         private VisualElement _lastReloadRoot;
+        private readonly List<VisualElement> _cascadeItems = new List<VisualElement>();
+        private IVisualElementScheduledItem _cascadeSchedule;
+
+        // The fake-loading page animates its bar instead of cascading its elements.
+        private bool PageCascadeEnabled =>
+            UiKit.Config != null && UiKit.Config.pageCascadeEnabled && GetComponent<UiFakeLoading>() == null;
 
         /// <summary>Page id used by the router and element paths.</summary>
         public string PageId => pageId;
@@ -158,6 +164,14 @@ namespace Neo.UIKit
             OnBind();
             Bound?.Invoke();
 
+            _cascadeItems.Clear();
+            if (PageCascadeEnabled)
+            {
+                _cascadeItems.AddRange(UiCascade.CollectPageItems(ScreenRoot));
+                // Keep them hidden until Show; if already shown (rebind), reveal immediately.
+                UiCascade.SetHidden(_cascadeItems, !_isShown);
+            }
+
             if (_pendingShow)
             {
                 _pendingShow = false;
@@ -182,6 +196,12 @@ namespace Neo.UIKit
 
             foreach (PopupView popup in _popups.Values)
                 popup.Unwire();
+
+            _cascadeSchedule?.Pause();
+            _cascadeSchedule = null;
+            _cascadeItems.Clear();
+            _pageAnimSchedule?.Pause();
+            _pageAnimSchedule = null;
 
             UnwireAudioToggles();
             UnwireUi();
@@ -501,6 +521,13 @@ namespace Neo.UIKit
                 if (_isShown)
                     OnShow();
             });
+
+            if (PageCascadeEnabled && _cascadeItems.Count > 0)
+            {
+                _cascadeSchedule?.Pause();
+                UiCascade.SetHidden(_cascadeItems, true);
+                _cascadeSchedule = UiCascade.Play(ScreenRoot, _cascadeItems, true, null, 0, 60);
+            }
         }
 
         internal void HideInternal(bool animated, Action onHidden)
@@ -537,13 +564,15 @@ namespace Neo.UIKit
             }
         }
 
-        /// <summary>Show animation hook; the default resolves the configured preset and mode.</summary>
+        private const long PageAnimDurationMs = 260;
+        private IVisualElementScheduledItem _pageAnimSchedule;
+
+        /// <summary>Show animation hook; the default plays the configured preset via a code tween.</summary>
         protected virtual void PlayShowAnimation(VisualElement element, Action onDone)
         {
             UiAnimationMode mode = AnimationMode;
             bool animated = mode == UiAnimationMode.ForwardAndBackward || mode == UiAnimationMode.ForwardOnly;
-            UiAnimations.ApplyPresetClass(element, ShowPreset);
-            (animated ? UiAnimations.Get(ShowPreset) : UiAnimations.Instant).Show(element, onDone);
+            AnimatePage(element, ShowPreset, true, animated, onDone);
         }
 
         /// <summary>Hide animation hook; the default uses the hide preset when configured.</summary>
@@ -551,10 +580,63 @@ namespace Neo.UIKit
         {
             UiAnimationMode mode = AnimationMode;
             bool animated = mode == UiAnimationMode.ForwardAndBackward || mode == UiAnimationMode.BackwardOnly;
-
             string preset = string.IsNullOrEmpty(HidePreset) ? ShowPreset : HidePreset;
-            UiAnimations.ApplyPresetClass(element, preset);
-            (animated ? UiAnimations.Get(preset) : UiAnimations.Instant).Hide(element, onDone);
+            AnimatePage(element, preset, false, animated, onDone);
+        }
+
+        private void AnimatePage(VisualElement element, string preset, bool show, bool animated, Action onDone)
+        {
+            _pageAnimSchedule?.Pause();
+
+            if (element == null || !animated || string.IsNullOrEmpty(preset) || preset == "none")
+            {
+                ApplyPagePreset(element, preset, show ? 1f : 0f);
+                onDone?.Invoke();
+                return;
+            }
+
+            _pageAnimSchedule = UiTween.Play(element, PageAnimDurationMs, p =>
+            {
+                float v = show ? p : 1f - p;
+                ApplyPagePreset(element, preset, v);
+            }, UiTween.Ease.OutCubic, onDone);
+        }
+
+        /// <summary>Applies a page preset at progress (0 = hidden, 1 = shown) via inline styles.</summary>
+        private static void ApplyPagePreset(VisualElement element, string preset, float v)
+        {
+            if (element == null)
+                return;
+
+            switch (preset)
+            {
+                case "fade":
+                    element.style.opacity = v;
+                    break;
+                case "scale":
+                    element.style.opacity = v;
+                    element.style.scale = new Scale(Vector3.one * Mathf.Lerp(0.92f, 1f, v));
+                    break;
+                case "slide-up":
+                    element.style.opacity = v;
+                    element.style.translate = new Translate(0, Length.Percent(Mathf.Lerp(8f, 0f, v)));
+                    break;
+                case "slide-down":
+                    element.style.opacity = v;
+                    element.style.translate = new Translate(0, Length.Percent(Mathf.Lerp(-8f, 0f, v)));
+                    break;
+                case "slide-left":
+                    element.style.opacity = v;
+                    element.style.translate = new Translate(Length.Percent(Mathf.Lerp(8f, 0f, v)), 0);
+                    break;
+                case "slide-right":
+                    element.style.opacity = v;
+                    element.style.translate = new Translate(Length.Percent(Mathf.Lerp(-8f, 0f, v)), 0);
+                    break;
+                default:
+                    element.style.opacity = v;
+                    break;
+            }
         }
 
         /// <summary>Query elements and subscribe here (generated code overrides this). Called on every reload.</summary>

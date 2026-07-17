@@ -352,7 +352,7 @@ namespace Neo.UIKit.Editor
             using (var check = new EditorGUI.ChangeCheckScope())
             {
                 string ns = EditorGUILayout.TextField(
-                    new GUIContent("Namespace", "Namespace сгенерированного кода."),
+                    new GUIContent("Namespace", "Namespace сгенерированного кода. Оставьте пустым для генерации без namespace (глобальная область)."),
                     config != null ? config.generatorNamespace : "Game.Ui");
                 string output = EditorGUILayout.TextField(
                     new GUIContent("Папка вывода", "Корневая папка сгенерированного кода и документации."),
