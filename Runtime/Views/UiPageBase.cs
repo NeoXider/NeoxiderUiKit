@@ -84,11 +84,13 @@ namespace Neo.UIKit
             StartCoroutine(EnsureBoundNextFrame());
         }
 
+        private static System.Reflection.PropertyInfo _rootProperty;
+
         /// <summary>
         /// PanelRenderer fires the reload callback only when it (re)creates its visual tree; on
-        /// re-enable the previous tree survives and no callback arrives. When no bind happened
-        /// within a frame, re-bind the cached root if it is still attached to a panel, otherwise
-        /// toggle the renderer to force a fresh reload.
+        /// re-enable the previous tree survives and no callback arrives, so the page would stay
+        /// unbound (blank). When no bind happened within a frame, bind directly to the renderer's
+        /// live root element so a re-shown page is populated.
         /// </summary>
         private System.Collections.IEnumerator EnsureBoundNextFrame()
         {
@@ -96,15 +98,39 @@ namespace Neo.UIKit
             if (IsBound || panelRenderer == null || !isActiveAndEnabled)
                 yield break;
 
-            if (_lastReloadRoot != null && _lastReloadRoot.panel != null)
+            VisualElement root = GetRendererRoot();
+            if (root == null && _lastReloadRoot != null && _lastReloadRoot.panel != null)
+                root = _lastReloadRoot;
+
+            if (root != null)
             {
-                Root = _lastReloadRoot;
-                BindInternal(_lastReloadRoot);
+                Unwire();
+                Root = root;
+                _lastReloadRoot = root;
+                BindInternal(root);
                 yield break;
             }
 
+            // Last resort: force the renderer to rebuild its tree next frame.
             panelRenderer.enabled = false;
             panelRenderer.enabled = true;
+        }
+
+        /// <summary>Reads the PanelRenderer's current root visual element (internal property).</summary>
+        private VisualElement GetRendererRoot()
+        {
+            if (panelRenderer == null)
+                return null;
+
+            if (_rootProperty == null)
+            {
+                _rootProperty = typeof(PanelRenderer).GetProperty("rootVisualElement",
+                    System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Public |
+                    System.Reflection.BindingFlags.Instance);
+            }
+
+            VisualElement root = _rootProperty?.GetValue(panelRenderer) as VisualElement;
+            return root != null && root.panel != null && root.childCount > 0 ? root : null;
         }
 
         protected virtual void OnDisable()
@@ -500,22 +526,31 @@ namespace Neo.UIKit
 
         internal void ShowInternal()
         {
-            if (!gameObject.activeSelf)
-            {
-                _pendingShow = true;
-                gameObject.SetActive(true);
-                return;
-            }
+            _pendingShow = true;
 
-            if (IsBound)
+            // The page GameObject is activated only the first time; afterwards it stays active and
+            // is hidden via display:none, so its PanelRenderer keeps a live, bound visual tree
+            // (the reload callback is unreliable on re-enable and would leave the page blank).
+            if (!gameObject.activeSelf)
+                gameObject.SetActive(true); // OnEnable registers the reload callback synchronously
+
+            if (Root != null)
+                Root.style.display = DisplayStyle.Flex;
+
+            if (IsBound && _pendingShow)
+            {
+                _pendingShow = false;
                 DoShow();
-            else
-                _pendingShow = true;
+            }
         }
 
         private void DoShow()
         {
             _isShown = true;
+
+            if (Root != null)
+                Root.style.display = DisplayStyle.Flex;
+
             PlayShowAnimation(ScreenRoot, () =>
             {
                 if (_isShown)
@@ -534,10 +569,11 @@ namespace Neo.UIKit
         {
             _pendingShow = false;
 
-            if (!gameObject.activeSelf || !_isShown && !IsBound)
+            if (!_isShown && !IsBound)
             {
                 _isShown = false;
-                gameObject.SetActive(false);
+                if (Root != null)
+                    Root.style.display = DisplayStyle.None;
                 onHidden?.Invoke();
                 return;
             }
@@ -549,7 +585,8 @@ namespace Neo.UIKit
                 if (_isShown)
                     return;
                 OnHide();
-                gameObject.SetActive(false);
+                if (Root != null)
+                    Root.style.display = DisplayStyle.None; // keep active+bound; hide from render/hit-test
                 onHidden?.Invoke();
             };
 
